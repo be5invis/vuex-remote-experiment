@@ -1,0 +1,42 @@
+<div id="app">
+	Clicked: {{ count }} times
+	<button v-on:click="increase">+</button>
+	<button v-on:click="decrease">-</button>
+</div>
+
+<script>
+	var remote = require('electron').remote;
+	var handle = remote.app.syncer;
+	var Vue = require('vue');
+	var Vuex = require('vuex');
+	Vue.use(Vuex);
+	
+	var dummy = new Vuex.Store({
+		state : { handle: handle },
+		mutations: {
+			sync: function(state){
+				state.handle = null;
+				state.handle = handle;
+			}
+		}
+	});
+	
+	var actions = new (require("./actions"))(handle);
+	const ipcRenderer = require('electron').ipcRenderer;
+	var windowID = ipcRenderer.sendSync('ping');
+	ipcRenderer.on('sync', function(){ dummy.dispatch('sync') });
+	
+	var app = new Vue({
+		el: '#app',
+		store: dummy,
+		vuex: {
+			getters: {
+				count : function(state){ return state.handle.state.count }
+			},
+			actions: actions
+		}
+	});
+	window.onbeforeunload = function(){
+		handle.detach(windowID);
+	};
+</script>
